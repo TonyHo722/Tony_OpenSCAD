@@ -23,16 +23,21 @@ hole_radius = inner_thread_diameter/2;      // 圓柱體半徑
 hole_length = inner_thread_length;
 
 // Toggle: Set to false for instant previews (plain cylinders), true for threaded STL
-use_detailed_threads = false;  // Change to false for quick tests
+use_detailed_threads = true;  // Change to false for quick tests
+
+//*** do not use center=ture in metric_thread, it will show below warning ***
+//WARNING: Normalized tree is growing past 200000 elements. Aborting normalization.  
+//WARNING: CSG normalization resulted in an empty tree 
 
 module threaded_section(diam, pitch, len, z_pos) {
     if (use_detailed_threads) {
         translate([0, 0, z_pos])
             metric_thread(diameter=diam, pitch=pitch, length=len, internal=true);
+            // metric_thread(diameter=diam, pitch=pitch, length=len, internal=true, center=ture);
     } else {
         // Plain cylinder approximation (fast, no helix)
         translate([0, 0, z_pos])
-            cylinder(h=len, r=diam/2, center = true);
+            cylinder(h=len, r=diam/2);
     }
 }
 
@@ -115,7 +120,7 @@ difference() {
   }
 
 
-  threaded_section(inner_thread_diameter, inner_thread_pitch, inner_thread_length, -cylinder_length/2 -hat_length/2 -bottom_length/2);
+  threaded_section(inner_thread_diameter, inner_thread_pitch, inner_thread_length, -cylinder_length/2 -hat_length -bottom_length);
 
 /*  
   translate([0, 0, -cylinder_length/2 -hat_length/2 -bottom_length/2]) 
