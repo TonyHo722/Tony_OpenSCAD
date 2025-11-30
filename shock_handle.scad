@@ -2,6 +2,10 @@
 // OpenSCAD Code: 100mm 圓柱體切割成半圓柱 (Half Cylinder)
 // =========================================================
 
+// Toggle: Set to false for instant previews (plain cylinders), true for threaded STL
+use_detailed_threads = false;  // Change to false for quick tests
+
+
 // 引用螺紋庫，確保 threads.scad 檔案位於同一目錄或 OpenSCAD 庫路徑中
 include <threads.scad>
 
@@ -22,8 +26,13 @@ inner_thread_length = 7.5;
 hole_radius = inner_thread_diameter/2;      // 圓柱體半徑
 hole_length = inner_thread_length;
 
-// Toggle: Set to false for instant previews (plain cylinders), true for threaded STL
-use_detailed_threads = true;  // Change to false for quick tests
+head_radius = 25/2;
+head_center_z = 5;
+
+mount_len = 20;
+mount_radius  = 5;
+
+
 
 //*** do not use center=ture in metric_thread, it will show below warning ***
 //WARNING: Normalized tree is growing past 200000 elements. Aborting normalization.  
@@ -61,6 +70,7 @@ difference() {
             r = handle_wdith/2,
             center = true
         );
+
 
 
     // --- Handle ---
@@ -152,7 +162,34 @@ difference() {
   }
   
 */
+
+  difference() {
+
+      translate(v = [-head_radius, -head_radius, head_center_z])
+      {
+          
+          cube(
+              size = [head_radius * 2 , head_radius * 2 , head_radius ],
+              center = ture
+          );
+      }
+
+      translate(v = [0, 0, head_center_z])
+      {
+          sphere(r = head_radius);
+      }
+  }
+
+  translate(v = [0, mount_len/2, head_center_z])
+    rotate(a = 90, v = [1, 0, 0]) // 繞 X 軸旋轉 90 度
+        cylinder(h=mount_len, r=mount_radius, center=ture);
+      
   
 }
 
 
+/*
+  translate(v = [0, mount_len/2, head_center_z])
+    rotate(a = 90, v = [1, 0, 0]) // 繞 X 軸旋轉 90 度
+        cylinder(h=mount_len, r=mount_radius, center=ture);
+*/
