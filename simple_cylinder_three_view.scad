@@ -1,92 +1,74 @@
-// Stepped Cylinder Three-View Orthographic Drawing (2D-Only for Instant Render)
-// Based on your specs: Overall 81.5 mm length, sections as defined
+// Simple Cylinder Three-View Orthographic Drawing (2D-Only for Instant Render)
+// 100 mm length, Ø10 mm diameter
 // Units: mm; Scale: 1:1
-// Save as .scad, F5/F6 in OpenSCAD for views, export DXF for editing
+// Save as .scad, F5/F6 in OpenSCAD, export DXF for editing
 
-$fn = 50;  // Smoothness
+$fn = 50;  // Smoothness for circles
 
-// Section lengths and radii for calculations
-sec_lengths = [3, 7.5, 54.4, 9.6, 7];
-sec_diams = [8.4, 10.0, 10.05, 8.0, 8.0];
-sec_radii = [for (d = sec_diams) d / 2];
-
-// Cumulative Z positions
-cum_z = [0];
-for (i = [0:3]) cum_z = concat(cum_z, [cum_z[i+1] + sec_lengths[i]]);
-
-// Front/Right View: Stepped polygon (symmetric outline with centerline)
+// Front/Right View: Rectangle with centerline
 module front_view() {
+    // Outline rectangle (100 mm high, 10 mm wide)
+    translate([-5, 0]) square([10, 100]);
+    
     // Centerline
-    translate([0, cum_z[1]/2]) square([0.1, 81.5], center=true);
-
-    // Stepped sides (left and right edges)
-    for (side = [-1, 1]) {
-        translate([side * sec_radii[0], cum_z[0]]) square([0.1, sec_lengths[0]]);
-        translate([side * sec_radii[1], cum_z[1]]) square([0.1, sec_lengths[1]]);
-        translate([side * sec_radii[2], cum_z[2]]) square([0.1, sec_lengths[2]]);
-        translate([side * sec_radii[3], cum_z[3]]) square([0.1, sec_lengths[3]]);
-        translate([side * sec_radii[4], cum_z[4]]) square([0.1, sec_lengths[4]]);
-    }
-
-    // Thread indicators (simple lines for drawing)
-    translate([5.0, cum_z[1]]) {  // Sec2 thread
-        for (i = [0:0.5:7.5]) translate([0, i]) square([0.1, 0.1]);
-    }
-    translate([-5.0, cum_z[1]]) {  // Mirror
-        for (i = [0:0.5:7.5]) translate([0, i]) square([0.1, 0.1]);
-    }
-    translate([4.0, cum_z[4]]) {  // Sec5 thread
-        for (i = [0:0.4:7]) translate([0, i]) square([0.1, 0.1]);
-    }
-    translate([-4.0, cum_z[4]]) {
-        for (i = [0:0.4:7]) translate([0, i]) square([0.1, 0.1]);
-    }
+    translate([0, 0]) square([0.1, 100]);
 }
 
-// Top View: Stacked circles with centerline
+// Top View: Circle with centerline
 module top_view() {
+    // Circle Ø10 mm
+    circle(r=5);
+    
     // Horizontal centerline
-    translate([0, 0]) square([10.1, 0.1]);  // Approx full width
-
-    // Circles for each section (overlapping)
-    for (i = [0:4]) {
-        translate([0, cum_z[i+1] - cum_z[i]/2]) circle(r = sec_radii[i]);
-    }
-
-    // Thread indicators on top (dashed circles)
-    // Sec2: Dashed at r=5
-    translate([0, cum_z[2] - cum_z[1]/2]) {
-        for (a = [0:30:360]) rotate(a) translate([5, 0]) square([0.2, 0.2]);
-    }
-    // Sec5 similar...
+    translate([0, 0]) square([10, 0.1]);
 }
 
-// Simple dimension module
+// Simple dimension line/arrow (using hull for line + triangles for arrows)
 module dim_line(x1, y1, x2, y2, label) {
-    line = [ [x1,y1], [x2,y2] ];
-    polyline(line);
-    // Arrows (basic)
-    translate([x2, y2]) circle(r=0.1);
-    translate([x1, y1]) circle(r=0.1);
-    // Label
-    translate( [(x1+x2)/2, (y1+y2)/2] ) text(label, size=1.5);
+    // Line
+    hull() {
+        translate([x1, y1]) circle(r=0.05);
+        translate([x2, y2]) circle(r=0.05);
+    }
+    
+    // Arrowheads (basic triangles)
+    angle = atan2(y2 - y1, x2 - x1);
+    arrow_len = 0.5;
+    
+    // End arrow
+    translate([x2, y2]) rotate(angle) polygon([[0,0], [-arrow_len, -0.2], [-arrow_len, 0.2]]);
+    
+    // Start arrow (reversed)
+    translate([x1, y1]) rotate(angle + 180) polygon([[0,0], [-arrow_len, -0.2], [-arrow_len, 0.2]]);
+    
+    // Label midway
+    translate([(x1 + x2)/2, (y1 + y2)/2 - 1]) text(label, size=2, halign="center");
 }
 
-// Layout (arrange views)
-translate([0, 0]) front_view();  // Front
+// Layout: Arrange views (A4-ish: 200x150 mm sheet)
+translate([20, 20]) front_view();  // Front view
 
-translate([100, 0]) top_view();  // Top
+translate([120, 20]) top_view();   // Top view
 
-translate([0, -100]) rotate(90) front_view();  // Right (rotated)
+translate([20, -100]) rotate([0,0,90]) front_view();  // Right view (rotated 90° for side; same as front)
 
 // Dimensions (examples)
-dim_line(0, 0, 0, 81.5, "81.5");  // Overall
-dim_line(5.025, 10.5, 5.025, 64.9, "54.4");  // Sec3
+translate([20, 20]) {  // Relative to front
+    dim_line(0, -5, 0, 105, "100");  // Overall length
+    dim_line(-7.5, 50, 7.5, 50, "Ø10");  // Diameter
+}
+
+translate([120, 20]) {  // Relative to top
+    dim_line(-7.5, 0, 7.5, 0, "Ø10");  // Diameter
+}
 
 // Labels
-translate([0, 85]) text("Front View");
-translate([100, 85]) text("Top View");
-translate([0, -185]) text("Right View");
+translate([20, 115]) text("Front View", size=3);
+translate([120, 115]) text("Top View", size=3);
+translate([20, -195]) text("Right View", size=3);
 
 // Title
-translate([50, -110]) text("Stepped Cylinder Three-View Drawing", size=3, halign="center");
+translate([100, -210]) text("Simple Cylinder (100 mm L, Ø10 mm) - Orthographic Views (1:1 Scale)", size=3, halign="center");
+
+// Optional sheet border
+%translate([0, 0]) square([200, 250]);
