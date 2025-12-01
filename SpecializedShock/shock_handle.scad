@@ -36,7 +36,7 @@ mount_radius  = 5;
 chord_length = 2*sqrt(outer_radius*outer_radius- (handle_wdith/2)*(handle_wdith/2));    //l=2*sqrt(r^2 - d^2)
 
 inner_fillet_cylinder_length = chord_length; // L=100 mm (將沿 X 軸)
-inner_fillet_outer_radius = 10;     // R=10 mm
+inner_fillet_outer_radius = 1;     // R=10 mm
 
 
 //*** do not use center=ture in metric_thread, it will show below warning ***
@@ -133,7 +133,7 @@ difference() {
     }
     
     //inner Fillet
-    //translate(v = [0, 0, 0]) {
+    translate(v = [-inner_fillet_cylinder_length/2, handle_wdith/2, -cylinder_length/2]) {
       difference() {
 
         translate(v = [0,0,0])
@@ -158,7 +158,7 @@ difference() {
           }
 
       }
-    //}
+    }
     
     
   }
