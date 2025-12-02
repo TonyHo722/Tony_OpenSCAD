@@ -57,6 +57,94 @@ module threaded_section(diam, pitch, len, z_pos) {
 
 
 
+module handle_inner_fillet_false_ring(outer_radius, inner_fillet_outer_radius, cylinder_length) {
+    translate([0, 0, -cylinder_length/2])
+        difference() {
+            // a false ring
+                cylinder(
+                    h = cylinder_length,
+                    r = (outer_radius + inner_fillet_outer_radius),
+                    center = true
+                );
+        
+                cylinder(
+                    h = cylinder_length,
+                    r = outer_radius,
+                    center = true
+                );
+        }
+    
+}
+
+
+
+module handle_inner_fillet_section(side, handle_wdith, inner_fillet_outer_radius, inner_fillet_cylinder_length, cylinder_length) {
+    //inner Fillet
+    if (side==0) {
+        translate(v = [-inner_fillet_cylinder_length/2, handle_wdith/2, -cylinder_length/2]) {
+          difference() {
+
+            translate(v = [0,0,0])
+            {
+                cube(
+                    size = [inner_fillet_cylinder_length, inner_fillet_outer_radius, inner_fillet_outer_radius]
+                );
+            }
+
+            translate(v = [0, inner_fillet_outer_radius, inner_fillet_outer_radius])
+              rotate(a = 90, v = [0, 1, 0]) // 繞 Y 軸旋轉 90 度
+              {
+                  cylinder(
+                      h = inner_fillet_cylinder_length,
+                      r = inner_fillet_outer_radius
+                  );
+              }
+          }
+        }
+    }
+    else {
+        translate(v = [-inner_fillet_cylinder_length/2, -(handle_wdith/2+inner_fillet_outer_radius), -cylinder_length/2]) {
+          difference() {
+
+            translate(v = [0,0,0])
+            {
+                // 立方體從 Y=0 開始向正 Y 方向延伸，完美覆蓋圓柱體的上半部。
+                cube(
+                    size = [inner_fillet_cylinder_length, inner_fillet_outer_radius, inner_fillet_outer_radius]
+                );
+            }
+
+            translate(v = [0, 0, inner_fillet_outer_radius])
+              rotate(a = 90, v = [0, 1, 0]) // 繞 Y 軸旋轉 90 度
+              {
+                  cylinder(
+                      h = inner_fillet_cylinder_length,
+                      r = inner_fillet_outer_radius
+                  );
+              }
+          }
+        }
+    }
+}
+
+
+
+module handle_inner_fillet_false_part(side, outer_radius, inner_fillet_outer_radius, cylinder_length, handle_wdith, inner_fillet_cylinder_length) {
+    intersection() {
+        handle_inner_fillet_false_ring(outer_radius, inner_fillet_outer_radius, cylinder_length);
+        handle_inner_fillet_section(side, handle_wdith, inner_fillet_outer_radius, inner_fillet_cylinder_length, cylinder_length);
+    }
+}
+
+
+module handle_inner_fillet(side, outer_radius, inner_fillet_outer_radius, cylinder_length, handle_wdith, inner_fillet_cylinder_length) {
+    difference() {
+        handle_inner_fillet_section(side, handle_wdith, inner_fillet_outer_radius, inner_fillet_cylinder_length, cylinder_length);
+        handle_inner_fillet_false_part(side, outer_radius, inner_fillet_outer_radius, cylinder_length, handle_wdith, inner_fillet_cylinder_length);
+    }
+}
+
+
 difference() {
 
   union() {
@@ -132,33 +220,12 @@ difference() {
         
     }
     
-    //inner Fillet
-    translate(v = [-inner_fillet_cylinder_length/2, handle_wdith/2, -cylinder_length/2]) {
-      difference() {
-
-        translate(v = [0,0,0])
-        {
-            // 立方體從 Y=0 開始向正 Y 方向延伸，完美覆蓋圓柱體的上半部。
-            cube(
-                size = [inner_fillet_cylinder_length, inner_fillet_outer_radius, inner_fillet_outer_radius]
-            );
-        }
-
-        translate(v = [0, inner_fillet_outer_radius, inner_fillet_outer_radius])
-          rotate(a = 90, v = [0, 1, 0]) // 繞 Y 軸旋轉 90 度
-          {
-              // cylinder() 預設沿 Z 軸，底部中心在 [0, 0, 0]。
-              // 旋轉後：
-              // Z 軸 (高度) --> 變為 X 軸 (長度)
-              // X, Y 軸 (半徑) --> 變為 Y, Z 軸 (半徑)
-              cylinder(
-                  h = inner_fillet_cylinder_length,
-                  r = inner_fillet_outer_radius
-              );
-          }
-
-      }
+    //handle inner Fillet
+    for (side = [0 : 1]) {
+        handle_inner_fillet(side, outer_radius, inner_fillet_outer_radius, cylinder_length, handle_wdith, inner_fillet_cylinder_length);
+        echo(str("side: ", side));
     }
+
     
     
   }
@@ -167,36 +234,6 @@ difference() {
   //inner thread
   threaded_section(inner_thread_diameter, inner_thread_pitch, inner_thread_length, -cylinder_length/2 -hat_length -bottom_length);
 
-/*  
-  translate([0, 0, -cylinder_length/2 -hat_length/2 -bottom_length/2]) 
-  {
-
-
-  
-      // 1. use hole
-      cylinder(
-          h = hole_length,
-          r = hole_radius,
-          center = true
-      );
-
-      // 2. use thread
-      
-      // 內螺紋切割體 (The Internal Thread Cutter)
-      // metric_thread 函式來自 threads.scad 庫
-      // diameter=10, pitch=1.25
-      // internal=true 表示這個螺紋是「挖孔」用的螺紋形狀
-      metric_thread(
-          diameter = inner_thread_diameter,
-          pitch = inner_thread_pitch,
-          length = inner_thread_length, // 螺紋貫穿整個長度
-          internal = true,         // 產生內螺紋切割體
-          center = true            // 與主體圓柱體在 Z 軸上對齊
-      );
-      
-  }
-  
-*/
 
   // External Fillet
   difference() {
@@ -218,16 +255,10 @@ difference() {
 
   //make a mount hole
   
-  translate(v = [0, mount_len/2, head_center_z])
+  translate(v = [0, mount_len/2, head_center_z]) {
     rotate(a = 90, v = [1, 0, 0]) // 繞 X 軸旋轉 90 度
         cylinder(h=mount_len, r=mount_radius, center=ture);
       
-  
+  }
 }
 
-
-/*
-  translate(v = [0, mount_len/2, head_center_z])
-    rotate(a = 90, v = [1, 0, 0]) // 繞 X 軸旋轉 90 度
-        cylinder(h=mount_len, r=mount_radius, center=ture);
-*/
